@@ -1,0 +1,79 @@
+.container{
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+    margin-top: 200px;
+    background: #abffdf;
+    padding-bottom: 30px;
+    width: 600px;
+}
+
+.header{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    margin-top: 30px;
+}
+
+.headertext{
+    color: #162949;
+    font-size: 40px;
+    font-weight: 500;
+}
+
+.input{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: auto;
+    margin-top: 20px;
+    gap: 20px;
+}
+
+.forgot-pw{
+    color: #656565;
+    font-size: 12px;
+    font-weight: 100;
+    text-align: center;
+    padding-bottom: 20px;
+}
+
+.forgot-pw span{
+    color: rgba(0, 47, 255, 0.924);
+    font-weight: 200;
+}
+
+.continue{
+    display: flex;
+    width: 200px;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: #4b88ec;
+    border-radius: 50px;
+    margin: auto;
+}
+
+.no-account{
+    color: #162949;
+    font-size: 18px;
+    text-align: center;
+    padding-top: 30px;
+    padding-bottom: 10px;
+    
+}
+
+.submit{
+    display: flex;
+    width: 200px;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: #4b88ec;
+    border-radius: 50px;
+    margin: auto;
+}
