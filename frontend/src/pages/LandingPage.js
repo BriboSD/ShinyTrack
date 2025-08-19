@@ -9,10 +9,7 @@ function LandingPage() {
         <p>Login or Signup to continue</p>
       </header>
       <Link to="/SignIn">
-        <button type="button">press to login or signup</button>
-      </Link>
-      <Link to="/SignUp">
-        <button type="button">Sign up!</button>
+        <button type="button">press to log in or sign up</button>
       </Link>
     </div>
   );
