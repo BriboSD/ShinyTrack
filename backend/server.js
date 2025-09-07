@@ -38,19 +38,19 @@ app.listen(PORT, (error) => {
     }
 });
 
-
-function createWebToken(user) {
+function createWebToken(id, name ) {
     const payload = {
         //here goes what is needed for user based on database schema
-        email: user_email
-    }
+        user_id: id,
+        username: name
+    };
 
-
+    return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '2h'});
 }
 
 //api definitions
 
-app.get('/logim', async (req, res) => {
+app.get('/login', async (req, res) => {
 
     const {user_email, user_password} = req.body;
 
@@ -66,13 +66,29 @@ app.get('/logim', async (req, res) => {
         {
             console.log("no user found");
             return null;
-            //tell caller that no results were found
         }
         else
         {
             console.log("user found")
-            const accessToken = jwt.sign( mail , process.env.ACCESS_TOKEN_SECRET);
-            return res.json({ accessTokenoken: accessToken })
+            const user = rows[0]
+            const accessToken = createWebToken(user.user_id, user.user_password)
+
+            //make refresh token:
+            const refreshToken = crypto.randomBytes(64).toString("hex");
+            const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+            await db.query(
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))",
+                [user.id, refreshTokenHash]
+              );
+            
+            //refresh token created, can send back access token (and also send http secure cookie route to store hashed refresh token version to compare against db, but do that later)
+            return res.json({
+                accessToken: accessToken,
+                userId: user.userId,
+                username: user.username
+            });
+
         }
 
     } 
