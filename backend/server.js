@@ -50,53 +50,65 @@ function createWebToken(id, name ) {
 
 //api definitions
 
-app.get('/login', async (req, res) => {
+app.post('/login', async (req, res) => {
 
     const {user_email, user_password} = req.body;
 
-    const query = "SELECT * FROM users WHERE user_email = ? AND user_password = ?";
+    const query = "SELECT * FROM users WHERE user_email = ?";
+
 
     try 
     {
-        const [rows] = await db.query(query, [user_email, user_password]);
+        const [rows] = await db.query(query, [user_email]);
 
         const mail = {user_email: req.body.user_email}
 
         if (rows.length == 0)
         {
             console.log("no user found");
-            return null;
+            return res.status(401).json({ error: "Invalid email or password" });
         }
-        else
+
+        console.log("user found")
+        const user = rows[0]
+        const correctPassword = await bcrypt.compare(user_password, user.password)
+        if(!correctPassword)
         {
-            console.log("user found")
-            const user = rows[0]
-            const accessToken = createWebToken(user.user_id, user.user_password)
-
-            //make refresh token:
-            const refreshToken = crypto.randomBytes(64).toString("hex");
-            const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-
-            await db.query(
-                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))",
-                [user.id, refreshTokenHash]
-              );
-            
-            //refresh token created, can send back access token (and also send http secure cookie route to store hashed refresh token version to compare against db, but do that later)
-            return res.json({
-                accessToken: accessToken,
-                userId: user.userId,
-                username: user.username
-            });
-
+            console.log("incorrect password")
+            return res.status(401).json({ error: "Invalid email or password" });
         }
+
+        const accessToken = createWebToken(user.user_id, user.username)
+
+        //make refresh token:
+        const refreshToken = crypto.randomBytes(64).toString("hex");
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+        await db.query(
+            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))",
+            [user.user_id, refreshTokenHash]
+            );
+        
+        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true, maxAge: 24*60*60*1000 }); //max age---12 houRs
+
+
+        //refresh token created, can send back access token (and also send http secure cookie route to store hashed refresh token version to compare against db, but do that later)
+        return res.json({
+            accessToken: accessToken,
+            userId: user.user_id,
+            username: user.username
+        });
 
     } 
     catch (err)
     {
-        console.log(error);
+        console.log("Login error:", err);
+        return res.status(500).json({ error: "Internal server error" });
+
     }
 });
+
+
 
 function authenticateToken(req, res, nex) {
     const authHeader = req.headers['authorization']
@@ -115,19 +127,39 @@ function authenticateToken(req, res, nex) {
 app.post('/add-user', async (req, res) => {
 
    const {user_email, username, user_password} = req.body;
-
-   const selectQuery = ""
-   const query = "INSERT into "
+   const query = "INSERT INTO users (user_email, user_password, username) VALUES (?, ?, ?)";
    
-
    try
    {
-    const [result] = await db.query()
+        hashedPassword = await bcrypt.hash(user_password, 10);
+        const [result] = await db.query(query, [user_email, hashedPassword, username]);
+
+        //token stuff
+        const accessToken = createWebToken(result.user_id, username)
+
+        const refreshToken = crypto.randomBytes(64).toString("hex");
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+        await db.query(
+            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))",
+            [result.insertId, refreshTokenHash]
+        );
+        
+        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true, maxAge: 24*60*60*1000 }); //max age---24 houRs
+
+        return res.status(201).json({
+            message: "User created successfully",
+            userId: result.insertId,
+            email: user_email,
+            username: username
+    });
         
    }
-   catch (error)
-   {
-
-   }
+   catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: "Email already in use" });
+        }
+        return res.status(500).json({ error: "Server error" });
+    }
 
 });
