@@ -8,7 +8,7 @@ function LandingPage() {
         <h1>Welcome to Shiny Track!</h1>
         <p>Login or Signup to continue</p>
       </header>
-      <Link to="/SignIn">
+      <Link to="/sign-in">
         <button type="button">press to log in or sign up</button>
       </Link>
     </div>

@@ -1,61 +1,60 @@
-import React, { useState } from 'react';
-import './SignIn.css'
+import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 
-
-
-
-
-function SignIn() {
+function SignUp() 
+{
 
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
 
-    const handleContinue = async (e) =>{
-        //where the api call will occur. Unsure about the code here, will have to check to make sure its being handled properly
+    const handleCreate = async (e) =>
+    {
         e.preventDefault();
-        //setSuccess(true)
-        try {
-            const response = await fetch('http://localhost:8000/login', {
-                
+        
+        try 
+        {
+            console.log("Sending data:", { username, password, email });
+            const response = await fetch('http://localhost:8000/add-user', {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     user_email: email,
-                    user_password: password                  
+                    username,
+                    user_password: password
                 }),
                 credentials: "include"
-            });
 
-            const data = await response.json(); 
+            });
+            const data = await response.json();
             if (response.ok)
             {
                 localStorage.setItem("token", data.accessToken); 
-                navigate("/user-page")
+                navigate("/user-page");
             }
             else
             {
-                console.error("Login failed:", data.message || "Unknown error");
-
+                console.error("user creation failed:", data.message || "Unknown error");
             }
         }
-        catch (error){
+        catch (error)
+        {
             console.error("Error:", error)
         }
 
     };
-
-    const handleCreate = async (e) => {
-        navigate("/sign-up")
+    const handleLog = async (e) =>
+    {
+        navigate("/sign-in");
     };
 
     return (
         <div className='container'> 
             <div className='header'>
-                <div className='headertext'>Sign In</div>
+                <div className='headertext'>Create Account</div>
             </div>
             <div className='inputs'>
                 <div className='input'>
@@ -68,6 +67,14 @@ function SignIn() {
                 </div>
                 <div className='input'>
                     <input 
+                    type='username' 
+                    placeholder='username' 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    />
+                </div>
+                <div className='input'>
+                    <input 
                     type='password' 
                     placeholder='password' 
                     value={password}
@@ -75,12 +82,11 @@ function SignIn() {
                     />
                 </div>
             </div>
-            <div className='forgot-pw'>Forgot your password? <span> click here to reset</span> </div>
-            <button className='continue' onClick={handleContinue}> continue</button>
-            <div className='no-account'>Don't have an account yet? </div>
-            <button className='submit' onClick={handleCreate}> Create account </button>            
+            <button className='continue' onClick={handleCreate}> continue</button>
+            <div className='have-account'>Already have an account? </div>
+            <button className='submit' onClick={handleLog}> log in </button>            
         </div>
     );
-}
 
-export default SignIn;
+}
+export default SignUp;

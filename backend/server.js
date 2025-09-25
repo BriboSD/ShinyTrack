@@ -1,18 +1,26 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
+import express from "express";
+import mysql from "mysql2/promise";
+import crypto from "crypto";
+import cors from "cors";
 
 dotenv.config();
 
-const express = require('express');
-const mysql = require("mysql2");
 
 const app = express();
 const PORT = 8000;
 
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true // needed if you plan to use cookies
+  }));
+app.use(express.json());
+
 //connect to my mysql database
 
-const db = mysql.createConnection({
+const db = await mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -20,13 +28,9 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT
 });
 
-db.connect((err) => {
-    if (err) {
-      console.error('Error connecting to the database:', err.message);
-    } else {
-      console.log('Connected to the MySQL database.');
-    }
-  });
+
+    console.log('Connected to the MySQL database.');
+
 
 app.listen(PORT, (error) => {
     if(!error) {
@@ -48,7 +52,7 @@ function createWebToken(id, name ) {
     return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '2h'});
 }
 
-//api definitions
+//============== api definitions =================
 
 app.post('/login', async (req, res) => {
 
@@ -71,7 +75,7 @@ app.post('/login', async (req, res) => {
 
         console.log("user found")
         const user = rows[0]
-        const correctPassword = await bcrypt.compare(user_password, user.password)
+        const correctPassword = await bcrypt.compare(user_password, user.user_password)
         if(!correctPassword)
         {
             console.log("incorrect password")
@@ -89,7 +93,7 @@ app.post('/login', async (req, res) => {
             [user.user_id, refreshTokenHash]
             );
         
-        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true, maxAge: 24*60*60*1000 }); //max age---12 houRs
+        res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true, maxAge: 24*60*60*1000 }); //max age---24 hours
 
 
         //refresh token created, can send back access token (and also send http secure cookie route to store hashed refresh token version to compare against db, but do that later)
@@ -107,8 +111,6 @@ app.post('/login', async (req, res) => {
 
     }
 });
-
-
 
 function authenticateToken(req, res, nex) {
     const authHeader = req.headers['authorization']
@@ -131,11 +133,12 @@ app.post('/add-user', async (req, res) => {
    
    try
    {
-        hashedPassword = await bcrypt.hash(user_password, 10);
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(user_password, saltRounds);
         const [result] = await db.query(query, [user_email, hashedPassword, username]);
 
         //token stuff
-        const accessToken = createWebToken(result.user_id, username)
+        const accessToken = createWebToken(result.insertId, username)
 
         const refreshToken = crypto.randomBytes(64).toString("hex");
         const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
@@ -151,7 +154,8 @@ app.post('/add-user', async (req, res) => {
             message: "User created successfully",
             userId: result.insertId,
             email: user_email,
-            username: username
+            username: username,
+            accessToken: accessToken
     });
         
    }
@@ -159,7 +163,8 @@ app.post('/add-user', async (req, res) => {
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ error: "Email already in use" });
         }
-        return res.status(500).json({ error: "Server error" });
+        console.error("Error details:", err.message, err.stack);
+        return res.status(500).json({ error: "Server error", details: err.message });
     }
 
 });
